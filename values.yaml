@@ -1,0 +1,24 @@
+replicaCount: 1
+
+image:
+  repository: k3d-local-registry:12345/switchy
+  pullPolicy: Always
+  tag: "latest"
+
+nameOverride: "switchy"
+fullnameOverride: "switchy"
+
+extraSelectorLabels:
+  version: blue
+
+readinessProbe: ~
+livenessProbe: ~
+
+extraClusterRoles:
+  update-services:
+    resources: ["services"]
+    verbs: ["get", "update"]
+    subjects:
+    - kind: ServiceAccount
+      name: switchy
+      namespace: default
