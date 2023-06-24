@@ -4,8 +4,8 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"strings"
 
+	"github.com/foomo/keel/config"
 	"github.com/nats-io/nats.go"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
@@ -15,33 +15,37 @@ import (
 const (
 	versionBlue  = "blue"
 	versionGreen = "green"
-	version      = "version"
+	versionKey   = "version"
 )
 
 func main() {
+	config := config.Config()
+	natsAddr := config.GetString("nats.addr")
+	namespace := config.GetString("namespace")
+	service := config.GetString("service")
+
 	ctx := context.Background()
 	// create the in-cluster config
-	config, err := rest.InClusterConfig()
+	cc, err := rest.InClusterConfig()
 	if err != nil {
 		log.Fatal(err)
 	}
 	// create the clientset
-	cs, err := kubernetes.NewForConfig(config)
+	cs, err := kubernetes.NewForConfig(cc)
 	if err != nil {
 		log.Fatal(err)
 	}
 	// nats
-	nc, err := nats.Connect("nats:4222")
+	nc, err := nats.Connect(natsAddr)
 	if err != nil {
 		log.Fatal(err)
 	}
 	defer nc.Close()
 	// Subscribe
-	if _, err := nc.Subscribe("foo", func(m *nats.Msg) {
+	if _, err := nc.Subscribe(fmt.Sprintf("%v/%v", namespace, service), func(m *nats.Msg) {
 		// make sure get, list, update permissions for service are avialable on k8s
 		log.Printf("got message %q with data %q", m.Subject, string(m.Data))
-		data := strings.Split(string(m.Data), "/")
-		if err := updateService(ctx, cs, data[0], data[1]); err != nil {
+		if err := setVersion(ctx, cs, namespace, service, string(m.Data)); err != nil {
 			log.Println(err)
 		}
 	}); err != nil {
@@ -51,8 +55,8 @@ func main() {
 	select {}
 }
 
-// update service resource label beetween blue and green
-func updateService(ctx context.Context, cs *kubernetes.Clientset, namespace, service string) error {
+// switch service resource label beetween blue and green
+func setVersion(ctx context.Context, cs *kubernetes.Clientset, namespace, service, version string) error {
 	// namespace must be provided if going after the service by name
 	svc, err := cs.CoreV1().Services(namespace).Get(ctx, service, v1.GetOptions{})
 	if err != nil {
@@ -60,19 +64,25 @@ func updateService(ctx context.Context, cs *kubernetes.Clientset, namespace, ser
 	}
 	// switch between green and blue
 	selectors := svc.Spec.Selector
-	currentVersion, ok := selectors[version]
+	currentVersion, ok := selectors[versionKey]
 	if !ok {
-		return fmt.Errorf("no version selector on service %v/%v", svc.Namespace, svc.Name)
+		return fmt.Errorf("no %v selector on service %v/%v", versionKey, svc.Namespace, svc.Name)
 	}
-	// switch
-	selectors[version] = versionBlue
-	if currentVersion == versionBlue {
-		selectors[version] = versionGreen
+	switch version {
+	case "switch":
+		selectors[versionKey] = versionBlue
+		if currentVersion == versionBlue {
+			selectors[versionKey] = versionGreen
+		}
+	case "blue", "green":
+		selectors[versionKey] = version
+	default:
+		return fmt.Errorf("invalid version %q provided", version)
 	}
 	svc.Spec.Selector = selectors
 	if _, err = cs.CoreV1().Services(namespace).Update(ctx, svc, v1.UpdateOptions{}); err != nil {
 		return err
 	}
-	log.Printf("switched service %v/%v version from %v to %v", namespace, service, currentVersion, selectors[version])
+	log.Printf("switched service %v/%v version from %v to %v", namespace, service, currentVersion, selectors[versionKey])
 	return nil
 }

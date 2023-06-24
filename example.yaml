@@ -1,0 +1,52 @@
+replicaCount: 1
+
+image:
+  repository: k3d-local-registry:12345/switchery
+  pullPolicy: Always
+  tag: "latest"
+
+nameOverride: "switchery"
+fullnameOverride: "switchery"
+
+readinessProbe: ~
+livenessProbe: ~
+
+service:
+  name: example
+  port: 80
+  selectorLabels:
+    app.kubernetes.io/name: example
+    version: blue
+
+ingress:
+  enabled: true
+  className: "nginx"
+  annotations: {}
+    # kubernetes.io/ingress.class: nginx
+    # kubernetes.io/tls-acme: "true"
+  hosts:
+    - host: example.local
+      paths:
+        - path: /
+          pathType: ImplementationSpecific
+  tls:
+   - secretName: example-tls
+     hosts:
+       - example.local
+
+env:
+  - name: NATS_ADDR
+    value: "nats:4222"
+  - name: NAMESPACE
+    value: "default"
+  - name: SERVICE
+    value: "example"
+
+extraRoles:
+  update-services:
+    resources: ["services"]
+    verbs: ["get", "update"]
+    subjects:
+    - kind: ServiceAccount
+      name: switchery
+      namespace: default

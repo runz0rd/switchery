@@ -1,5 +1,5 @@
 {{- if .Values.ingress.enabled -}}
-{{- $fullName := include "example.fullname" . -}}
+{{- $fullName := include "switchery.fullname" . -}}
 {{- $svcPort := .Values.service.port -}}
 {{- if and .Values.ingress.className (not (semverCompare ">=1.18-0" .Capabilities.KubeVersion.GitVersion)) }}
   {{- if not (hasKey .Values.ingress.annotations "kubernetes.io/ingress.class") }}
@@ -15,9 +15,9 @@ apiVersion: extensions/v1beta1
 {{- end }}
 kind: Ingress
 metadata:
-  name: {{ include "example.name" . }}
+  name: {{ .Values.service.name }}
   labels:
-    {{- include "example.labels" . | nindent 4 }}
+    {{- include "switchery.labels" . | nindent 4 }}
   {{- with .Values.ingress.annotations }}
   annotations:
     {{- toYaml . | nindent 4 }}
@@ -49,12 +49,12 @@ spec:
             backend:
               {{- if semverCompare ">=1.19-0" $.Capabilities.KubeVersion.GitVersion }}
               service:
-                name: {{ include "example.name" $ }}
+                name: {{ $.Values.service.name }}
                 port:
-                  number: {{ $svcPort }}
+                  number: {{ $.Values.service.port }}
               {{- else }}
-              serviceName: {{ include "example.name" $ }}
-              servicePort: {{ $svcPort }}
+              serviceName: {{ $.Values.service.name }}
+              servicePort: {{ $.Values.service.port }}
               {{- end }}
           {{- end }}
     {{- end }}

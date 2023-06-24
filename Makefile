@@ -2,20 +2,20 @@
 repo=k3d-local-registry:12345
 
 build:
-	docker build -t $(repo)/switchy:latest .
-	-docker push $(repo)/switchy:latest
+	docker build -t $(repo)/switchery:latest .
+	-docker push $(repo)/switchery:latest
 
 deploy:
-	helm upgrade --install switchy test/chart -f values.yaml
+	helm upgrade --install switchery chart -f example.yaml
 
 stress:
 	k6 run k6-test.js --insecure-skip-tls-verify
 
 blue:
-	kubectl patch svc/example -p '{"spec":{"selector":{"version": "blue"}}}'
+	kubectl exec deployment/nats-box -- nats pub default/example blue
 
 green:
-	kubectl patch svc/example -p '{"spec":{"selector":{"version": "green"}}}'
+	kubectl exec deployment/nats-box -- nats pub default/example green
 
 switch:
-	kubectl exec deployment/nats-box -- nats pub foo default/example
+	kubectl exec deployment/nats-box -- nats pub default/example switch
