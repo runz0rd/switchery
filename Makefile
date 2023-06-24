@@ -9,8 +9,7 @@ deploy:
 	helm upgrade --install switchy test/chart -f values.yaml
 
 stress:
-	# kubectl port-forward svc/example 8080:80
-	k6 run k6-test.js
+	k6 run k6-test.js --insecure-skip-tls-verify
 
 blue:
 	kubectl patch svc/example -p '{"spec":{"selector":{"version": "blue"}}}'

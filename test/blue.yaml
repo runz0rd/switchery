@@ -1,0 +1,7 @@
+
+extraSelectorLabels:
+  version: blue
+
+env:
+  - name: VERSION
+    value: blue
