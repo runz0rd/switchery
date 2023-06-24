@@ -9,7 +9,7 @@ export const options = {
 };
 
 export default function () {
-  const result = http.get('https://example.local:9443/');
+  const result = http.get('https://example.local:8443/');
   check(result, {
     'http response status code is 200': result.status === 200,
   });

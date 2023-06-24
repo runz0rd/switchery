@@ -9,6 +9,3 @@ deploy-blue:
 
 deploy-green:
 	helm upgrade --install example-green chart --set image.repository=$(repo)/hello --set image.tag=latest -f green.yaml
-
-deploy-nats:
-	helm upgrade --install nats nats --repo https://nats-io.github.io/k8s/helm/charts --version 0.17.5
